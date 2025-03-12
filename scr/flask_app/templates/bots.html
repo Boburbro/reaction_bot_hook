@@ -106,7 +106,7 @@
             margin-bottom: 8px;
         }
 
-        .subtitle {
+        .token {
             font-size: 0.95rem;
             color: #7f8c8d;
             line-height: 1.4;
@@ -271,20 +271,20 @@
         </button>
 
         <div class="users-container">
-            {% for user in users %}
+            {% for bot in bots %}
             <div class="user">
-                <div class="title">{{ user.title }}</div>
-                <div class="subtitle">{{ user.subtitle }}</div>
+                <div class="title">{{ bot.title }}</div>
+                <div class="token">{{ bot.token }}</div>
                 <div class="actions">
                     <button class="btn edit-btn"
-                        onclick="openEditModal('{{ user.id }}', '{{ user.title }}', '{{ user.subtitle }}')">Tahrirlash</button>
+                        onclick="openEditModal('{{ bot.id }}', '{{ bot.title }}', '{{ bot.token }}')">Tahrirlash</button>
                     <button class="btn delete-btn"
-                        onclick="confirmDelete('{{ user.id }}', '{{ user.title }}')">O'chirish</button>
+                        onclick="confirmDelete('{{ bot.id }}', '{{ bot.title }}')">O'chirish</button>
                 </div>
             </div>
             {% endfor %}
 
-            {% if not users %}
+            {% if not bots %}
             <div class="empty-state">
                 <p>Hozircha foydalanuvchilar yo'q. Yangi foydalanuvchi qo'shish uchun tugmani bosing.</p>
             </div>
@@ -297,16 +297,16 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Yangi Foydalanuvchi Qo'shish</h2>
-                <button class="close-btn" onclick="closeModal('addModal')">&times;</button>
+                <button class="close-btn" onclick="closeModal('addModal')">×</button>
             </div>
-            <form id="addUserForm" action="/add-user">
+            <form id="addUserForm" action="/bots">
                 <div class="form-group">
                     <label for="addTitle">Ism</label>
                     <input type="text" id="addTitle" name="title" required>
                 </div>
                 <div class="form-group">
-                    <label for="addSubtitle">Ma'lumot</label>
-                    <input type="text" id="addSubtitle" name="subtitle" required>
+                    <label for="addToken">Token</label>
+                    <input type="text" id="addToken" name="token" required>
                 </div>
                 <div class="form-buttons">
                     <button type="button" class="btn cancel-btn" onclick="closeModal('addModal')">Bekor qilish</button>
@@ -321,7 +321,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Foydalanuvchini Tahrirlash</h2>
-                <button class="close-btn" onclick="closeModal('editModal')">&times;</button>
+                <button class="close-btn" onclick="closeModal('editModal')">×</button>
             </div>
             <form id="editUserForm" action="/edit-user" method="POST">
                 <input type="hidden" id="editUserId" name="id">
@@ -330,8 +330,8 @@
                     <input type="text" id="editTitle" name="title" required>
                 </div>
                 <div class="form-group">
-                    <label for="editSubtitle">Ma'lumot</label>
-                    <input type="text" id="editSubtitle" name="subtitle" required>
+                    <label for="editToken">Token</label>
+                    <input type="text" id="editToken" name="token" required>
                 </div>
                 <div class="form-buttons">
                     <button type="button" class="btn cancel-btn" onclick="closeModal('editModal')">Bekor qilish</button>
@@ -342,20 +342,48 @@
     </div>
 
     <script>
-        // add-user
-        function addUser() {
+        document.getElementById('addUserForm').addEventListener('submit', function (event) {
+            event.preventDefault();
 
-        }
+            const formData = {
+                title: document.getElementById('addTitle').value,
+                token: document.getElementById('addToken').value
+            };
+
+            fetch('/bots', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Success:', data.message);
+                        closeModal('addModal');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 500);
+                    } else {
+                        console.error('Server error:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                });
+        });
+
 
         // Modal functions
         function openAddModal() {
             document.getElementById('addModal').style.display = 'flex';
         }
 
-        function openEditModal(id, title, subtitle) {
+        function openEditModal(id, title, token) {
             document.getElementById('editUserId').value = id;
             document.getElementById('editTitle').value = title;
-            document.getElementById('editSubtitle').value = subtitle;
+            document.getElementById('editToken').value = token;
             document.getElementById('editModal').style.display = 'flex';
         }
 
@@ -365,8 +393,18 @@
 
         function confirmDelete(id, title) {
             if (confirm(`Haqiqatan ham "${title}" foydalanuvchisini o'chirishni xohlaysizmi?`)) {
-                // Redirect to delete URL or submit form
-                window.location.href = `/delete-user/${id}`;
+                fetch(`/bots/${id}`, {
+                    method: 'DELETE',
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                        location.reload();
+                    })
+                    .catch(error => {
+                        console.error('Xatolik:', error);
+                        alert('Serverga ulanishda muammo yuz berdi');
+                    });
             }
         }
 

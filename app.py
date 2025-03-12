@@ -1,29 +1,58 @@
-from flask import Flask, render_template, request
+from scr.flask_app import create_app
 
-app = Flask(__name__)
+app = create_app()
 
-
-@app.route("/")
-def hello_world():
-    return render_template("splash.html")
-
-
-@app.route("/index")
-def index():
-    users = [
-        {"id": 1, "title": "User1", "subtitle": "Subtitle1"},
-        {"id": 2, "title": "User2", "subtitle": "Subtitle2"},
-        {"id": 3, "title": "User3", "subtitle": "Subtitle3"},
-        {"id": 4, "title": "User4", "subtitle": "Subtitle4"},
-    ]
-    return render_template("index.html", users=users)
-
-
-@app.route("/add-user", methods=["POST"])
-def add_user():
-    print(request.values)
-    return "done"
-
-
-if __name__ == "__main":
+if __name__ == "__main__":
     app.run(debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# from flask import Flask, render_template, request, url_for, redirect, jsonify
+#
+#
+# app = Flask(__name__)
+#
+#
+# @app.route("/")
+# def hello_world():
+#     return render_template("splash.html")
+#
+#
+#
+#
+#
+# # @app.route("/add-user", methods=["GET"])
+# # def add_user():
+# #     title = request.args.get("title")
+# #     subtitle = request.args.get("subtitle")
+# #
+# #     users.append(
+# #         {
+# #             "id": 0,
+# #             "title": title,
+# #             "subtitle": subtitle,
+# #         }
+# #     )
+# #
+# #     return redirect(url_for("index"))
+# #
+# #
+# @app.route("/delete-user/<int:id>", methods=["DELETE"])
+# def delete_user(id):
+#
+#     return jsonify({"message": f"Foydalanuvchi {id} o'chirildi"}), 200
+#
+#
+# if __name__ == "__main":
+#     app.run(debug=True, port=8888)
