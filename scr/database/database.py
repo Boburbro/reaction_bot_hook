@@ -1,5 +1,6 @@
 import sqlite3
 from scr.utils.check_func import check_func
+from datetime import datetime
 
 
 class Database:
@@ -15,9 +16,25 @@ class Database:
         CREATE TABLE IF NOT EXISTS bots (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             _token TEXT UNIQUE NOT NULL,
-            _title TEXT
+            _title TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );"""
         )
+        
+        # Create the activity_logs table if it doesn't exist
+        self.curs.execute(
+            """
+        CREATE TABLE IF NOT EXISTS activity_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            activity_type TEXT NOT NULL,
+            description TEXT NOT NULL,
+            ip_address TEXT,
+            user_agent TEXT,
+            username TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        );"""
+        )
+        
         self.conn.commit()
         
     @check_func
@@ -34,13 +51,14 @@ class Database:
     def fetch_bots(self) -> list:
         try:
             bots = []
-            _bots = self.curs.execute("SELECT * FROM bots;").fetchall()
+            _bots = self.curs.execute("SELECT id, _token, _title, created_at FROM bots;").fetchall()
             for _bot in _bots:
                 bots.append(
                     {
                         "id": _bot[0],
                         "token": _bot[1],
                         "title": _bot[2],
+                        "created_at": _bot[3]
                     }
                 )
             return bots
@@ -52,8 +70,8 @@ class Database:
     def add_bot(self, title: str, token: str) -> bool:
         try:
             self.curs.execute(
-                "INSERT INTO bots (_token, _title) VALUES (?, ?)",
-                (token, title),
+                "INSERT INTO bots (_token, _title, created_at) VALUES (?, ?, ?)",
+                (token, title, datetime.now()),
             )
             self.conn.commit()
             return True
@@ -106,12 +124,13 @@ class Database:
     @check_func
     def get_bot_by_id(self, bot_id: int) -> dict:
         try:
-            bot = self.curs.execute("SELECT * FROM bots WHERE id = ?", (bot_id,)).fetchone()
+            bot = self.curs.execute("SELECT id, _token, _title, created_at FROM bots WHERE id = ?", (bot_id,)).fetchone()
             if bot:
                 return {
                     "id": bot[0],
                     "token": bot[1],
-                    "title": bot[2]
+                    "title": bot[2],
+                    "created_at": bot[3]
                 }
             return None
         except Exception as error:
@@ -121,23 +140,64 @@ class Database:
     @check_func
     def get_bot_by_token(self, token: str) -> dict:
         try:
-            bot = self.curs.execute("SELECT * FROM bots WHERE _token = ?", (token,)).fetchone()
+            bot = self.curs.execute("SELECT id, _token, _title, created_at FROM bots WHERE _token = ?", (token,)).fetchone()
             if bot:
                 return {
                     "id": bot[0],
                     "token": bot[1],
-                    "title": bot[2]
+                    "title": bot[2],
+                    "created_at": bot[3]
                 }
             return None
         except Exception as error:
             print(f"Error getting bot by token: {error}")
             return None
+            
+    @check_func
+    def add_activity_log(self, activity_type: str, description: str, ip_address: str = None, 
+                         user_agent: str = None, username: str = None) -> bool:
+        """Add a new activity log entry to the database"""
+        try:
+            self.curs.execute(
+                """
+                INSERT INTO activity_logs 
+                (activity_type, description, ip_address, user_agent, username, timestamp) 
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (activity_type, description, ip_address, user_agent, username, datetime.now())
+            )
+            self.conn.commit()
+            return True
+        except Exception as error:
+            print(f"Error adding activity log: {error}")
+            return False
+            
+    @check_func
+    def get_recent_activities(self, limit: int = 10) -> list:
+        """Get recent activity logs from the database"""
+        try:
+            activities = []
+            query = """
+                SELECT id, activity_type, description, ip_address, username, timestamp 
+                FROM activity_logs 
+                ORDER BY timestamp DESC 
+                LIMIT ?
+            """
+            logs = self.curs.execute(query, (limit,)).fetchall()
+            
+            for log in logs:
+                activities.append({
+                    "id": log[0],
+                    "activity_type": log[1],
+                    "description": log[2],
+                    "ip_address": log[3],
+                    "username": log[4],
+                    "timestamp": log[5]
+                })
+            return activities
+        except Exception as error:
+            print(f"Error fetching activity logs: {error}")
+            return []
 
-    def close(self) -> None:
-        """Close database connection"""
-        self.conn.close()
 
-    def __del__(self):
-        """Destructor to ensure connection is closed"""
-        self.conn.close()
 
