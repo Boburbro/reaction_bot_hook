@@ -9,6 +9,7 @@ class Database:
 
     @check_func
     def init_database(self) -> None:
+        # Create the bots table if it doesn't exist
         self.curs.execute(
             """
         CREATE TABLE IF NOT EXISTS bots (
@@ -18,6 +19,16 @@ class Database:
         );"""
         )
         self.conn.commit()
+        
+    @check_func
+    def is_initialized(self) -> bool:
+        """Check if the database is initialized by checking if the bots table exists"""
+        try:
+            self.curs.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='bots';")
+            return bool(self.curs.fetchone())
+        except Exception as e:
+            print(f"Error checking if database is initialized: {e}")
+            return False
 
     @check_func
     def fetch_bots(self) -> list:

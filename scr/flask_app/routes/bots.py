@@ -1,22 +1,42 @@
-from flask import Blueprint, render_template, jsonify, request, redirect, url_for
+from flask import Blueprint, render_template, jsonify, request, redirect, url_for, flash
+from flask_login import login_required
 from scr.database.database import Database
+import sqlite3
 
 bots = Blueprint("bots", __name__, template_folder = "../templates")
 
 
 @bots.route("/")
+@login_required
 def bot_list():
+    db = Database()
+    
+    # First check if the database is initialized
+    if not db.is_initialized():
+        return render_template("bots.html", bots=[], db_initialized=False, 
+                              error_message="Database not initialized. Please initialize the database first.")
+    
     try:
-        bots_list = Database().fetch_bots()
+        bots_list = db.fetch_bots()
+        
+        # Check if the result is a list (successful query)
         if isinstance(bots_list, list):
-            return render_template("bots.html", bots = bots_list)
-        return render_template("create-data-base.html")
+            return render_template("bots.html", bots=bots_list, db_initialized=True)
+        # If it's not a list but also not an exception, it might be an error object
+        else:
+            error_str = str(bots_list)
+            return render_template("bots.html", bots=[], db_initialized=False, 
+                                  error_message=f"Database error: {error_str}")
+            
     except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+        error_str = str(e)
+        return render_template("bots.html", bots=[], db_initialized=False, 
+                              error_message=f"An error occurred: {error_str}")
 
 
 
 @bots.route("/<int:id>", methods = ["DELETE"])
+@login_required
 def delete_bot(id):
     try:
         db = Database()
@@ -27,6 +47,7 @@ def delete_bot(id):
 
 
 @bots.route("/", methods=["POST", "PUT"])
+@login_required
 def add_or_update_bot():
     try:
         data = request.get_json()
@@ -39,11 +60,14 @@ def add_or_update_bot():
             if "title" not in data or "token" not in data:
                 return jsonify({"success": False, "message": "title va token talab qilinadi"}), 400
 
-            db.add_bot(
+            id_added = db.add_bot(
                 title=data["title"],
                 token=data["token"],
             )
-            return jsonify({"success": True, "message": "Bot qo‘shildi"}), 201
+            if id_added:
+                return jsonify({"success": True, "message": "Bot qo'shildi"}), 201
+            else:
+                return jsonify({"success": False, "message": f"Token already exists"}), 400
 
         elif request.method == "PUT":
             if "id" not in data or "title" not in data or "token" not in data:
